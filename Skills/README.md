@@ -9,7 +9,7 @@ Skills/
 ```
 
 ## 当前可用 Skills
-
+- **`skill-template`**：Skill 语法/结构模板（可复制改名快速新建）。见 `skill-template/SKILL.md`。
 - **`self-intro`**：中文求职/面试自我介绍（默认约 60 秒），支持岗位对齐、项目量化、30 秒/2 分钟/偏技术版变体。见 `self-intro/SKILL.md`。
 - **`resume-generator`**：中文简历生成/润色（ATS 友好、默认一页 Markdown），支持根据 JD 对齐关键词、把经历改写为量化要点，并可选投递版/面试版。见 `resume-generator/SKILL.md`。
 
