@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "minimal-mcp-python": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "minimal_mcp_python.server"],
+      "cwd": "./MCP/minimal-mcp-python"
+    }
+  }
+}
+
