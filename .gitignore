@@ -10,11 +10,24 @@ __pycache__/
 *.so
 .Python
 
+# Also ignore nested venv/caches in subprojects
+**/.venv/
+**/venv/
+**/env/
+**/__pycache__/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.ipynb_checkpoints/
+
 # Distribution / packaging
 build/
 dist/
 *.egg-info/
 *.egg
+**/build/
+**/dist/
+**/*.egg-info/
 
 # Test / type / lint caches
 .pytest_cache/
@@ -24,6 +37,10 @@ dist/
 htmlcov/
 .tox/
 .nox/
+**/.coverage
+**/htmlcov/
+**/.tox/
+**/.nox/
 
 # Environment & secrets
 .env
