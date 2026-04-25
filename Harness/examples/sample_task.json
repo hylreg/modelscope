@@ -5,5 +5,11 @@
   "metadata": {
     "project": "Hermes Engineering",
     "mode": "template"
-  }
+  },
+  "checks": [
+    {
+      "kind": "contains",
+      "value": "Checklist"
+    }
+  ]
 }

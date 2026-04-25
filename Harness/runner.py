@@ -1,37 +1,25 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from openai import OpenAI
 
 from .config import HarnessConfig
+from .eval import EvalResult, evaluate_task
+from .logging_utils import save_run_record
 from .prompts import default_system_prompt, default_task_prompt
+from .schema import HarnessTaskSpec, TaskSchemaError, validate_task_payload
 
 
-@dataclass(frozen=True)
-class HarnessTask:
-    name: str
-    user_prompt: str
-    system_prompt: str | None = None
-    temperature: float = 0.2
-    metadata: dict[str, Any] | None = None
-
-
-def load_task(path: str | Path) -> HarnessTask:
+def load_task(path: str | Path) -> HarnessTaskSpec:
     raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    return HarnessTask(
-        name=raw.get("name", "unnamed-task"),
-        user_prompt=raw["user_prompt"],
-        system_prompt=raw.get("system_prompt"),
-        temperature=float(raw.get("temperature", 0.2)),
-        metadata=raw.get("metadata"),
-    )
+    return validate_task_payload(raw)
 
 
-def render_task_prompt(task: HarnessTask) -> str:
+def render_task_prompt(task: HarnessTaskSpec) -> str:
     template = default_task_prompt()
     return template.format(
         task_name=task.name,
@@ -40,7 +28,7 @@ def render_task_prompt(task: HarnessTask) -> str:
     )
 
 
-def run_task(config: HarnessConfig, task: HarnessTask) -> str:
+def _run_model(config: HarnessConfig, task: HarnessTaskSpec) -> str:
     if not config.api_key:
         return "未检测到 OPENAI_API_KEY，无法运行模型。"
 
@@ -58,3 +46,30 @@ def run_task(config: HarnessConfig, task: HarnessTask) -> str:
     )
     return getattr(response, "output_text", "").strip() or str(response)
 
+
+def run_task(config: HarnessConfig, task: HarnessTaskSpec) -> dict[str, Any]:
+    started_at = datetime.now(timezone.utc).isoformat()
+    output = _run_model(config, task)
+    evaluation: EvalResult = evaluate_task(task, output)
+    finished_at = datetime.now(timezone.utc).isoformat()
+
+    record = {
+        "task_name": task.name,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "model": config.model,
+        "base_url": config.base_url,
+        "temperature": task.temperature,
+        "metadata": task.metadata,
+        "system_prompt": task.system_prompt or default_system_prompt(),
+        "user_prompt": render_task_prompt(task),
+        "output": output,
+        "evaluation": {
+            "passed": evaluation.passed,
+            "total": evaluation.total,
+            "passed_checks": evaluation.passed_checks,
+            "failed_checks": evaluation.failed_checks,
+        },
+    }
+    record["run_file"] = str(save_run_record(config.runs_dir, record))
+    return record
