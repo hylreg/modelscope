@@ -1,10 +1,11 @@
 # Minimal Skill Agent
 
-一个最小可运行的意图路由 Agent：
+一个很小的意图路由 agent：
 
-1. 自动加载 `../Skills/*/SKILL.md`
-2. 根据用户输入做意图匹配，选中最合适的 skill
-3. 自动调用 skill（若配置了 `OPENAI_API_KEY`）
+1. 扫描 `../Skills/*/SKILL.md`
+2. 先用规则匹配 skill
+3. 规则不确定时，用 LLM 选一个 skill
+4. 把用户输入交给选中的 skill 执行
 
 ## 运行
 
@@ -12,19 +13,19 @@
 uv run python Agent/min_agent.py "帮我根据JD润色简历"
 ```
 
-只看路由结果（不调用模型）：
+只看路由结果：
 
 ```bash
 uv run python Agent/min_agent.py "帮我写一段面试自我介绍" --dry-run
 ```
 
-## 可选环境变量
+## 环境变量
 
-- `OPENAI_API_KEY`：配置后会自动调用模型
-- `OPENAI_MODEL`：默认 `gpt-4.1-mini`
-- `OPENAI_BASE_URL`：可选，兼容 OpenAI-compatible 网关
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`，默认 `gpt-4.1-mini`
+- `OPENAI_BASE_URL`
 
 ## 参数
 
-- `--skills-dir`：自定义 skills 目录（默认 `../Skills`）
-- `--dry-run`：仅路由，不调用模型
+- `--skills-dir`：skills 目录，默认 `../Skills`
+- `--dry-run`：只路由，不执行 skill
