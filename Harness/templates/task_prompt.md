@@ -6,5 +6,10 @@ Task instructions:
 Optional metadata:
 {metadata}
 
-Return the result in the most useful format for the task.
+Shared context:
+{shared_context}
 
+Tool outputs:
+{tool_outputs}
+
+Return the result in the most useful format for the task.

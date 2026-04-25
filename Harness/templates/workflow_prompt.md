@@ -6,3 +6,5 @@ Use the previous step output as supporting context only. If it is missing, proce
 Previous step output:
 {previous_output}
 
+Shared workflow context:
+{shared_context}

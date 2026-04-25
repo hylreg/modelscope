@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from .config import load_config
@@ -20,6 +21,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dry-run", action="store_true", help="Only print task and exit")
     parser.add_argument("--json", action="store_true", help="Print structured JSON output")
     parser.add_argument("--pattern", default="*.json", help="File glob for --tasks-dir")
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=None,
+        help="Worker count for --tasks-dir (defaults to HARNESS_MAX_WORKERS)",
+    )
     return parser
 
 
@@ -41,45 +48,54 @@ def _run_single_task(args: argparse.Namespace) -> dict:
 def _run_task_dir(args: argparse.Namespace) -> dict:
     config = load_config()
     root = Path(args.tasks_dir)
-    results: list[dict] = []
-    for path in sorted(root.glob(args.pattern)):
-        if not path.is_file():
-            continue
+    paths = [path for path in sorted(root.glob(args.pattern)) if path.is_file()]
+    max_workers = max(1, args.concurrency or config.max_workers)
+
+    def execute(path: Path) -> dict:
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as e:
-            results.append(
-                {
-                    "task_file": str(path.resolve()),
-                    "status": "error",
-                    "error": str(e),
-                }
-            )
-            continue
+            return {"task_file": str(path.resolve()), "status": "error", "error": str(e)}
         if isinstance(raw, dict) and "steps" in raw:
-            results.append(
-                {
-                    "task_file": str(path.resolve()),
-                    "status": "skipped",
-                    "reason": "workflow file",
-                }
-            )
-            continue
+            return {"task_file": str(path.resolve()), "status": "skipped", "reason": "workflow file"}
         try:
             task = load_task(path)
             if args.dry_run:
-                print(f"[dry-run] task={task.name} <- {path}")
-                print(task)
-                continue
-            results.append(run_task(config, task))
+                return {"task_file": str(path.resolve()), "status": "dry-run", "task": task}
+            return run_task(config, task)
         except (OSError, json.JSONDecodeError, TaskSchemaError) as e:
-            results.append(
-                {
-                    "task_file": str(path.resolve()),
-                    "status": "error",
-                    "error": str(e),
-                }
-            )
+            return {"task_file": str(path.resolve()), "status": "error", "error": str(e)}
+
+    if args.dry_run:
+        dry_count = 0
+        for path in paths:
+            item = execute(path)
+            if item.get("status") == "dry-run":
+                dry_count += 1
+                print(f"[dry-run] task={item['task'].name} <- {path}")
+                print(item["task"])
+        return {
+            "summary": {
+                "mode": "batch",
+                "tasks_dir": str(root.resolve()),
+                "pattern": args.pattern,
+                "total": dry_count,
+                "concurrency": max_workers,
+            },
+            "items": [],
+            "run_file": None,
+        }
+
+    results: list[dict] = []
+    if max_workers == 1:
+        results = [execute(path) for path in paths]
+    else:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_map = {executor.submit(execute, path): index for index, path in enumerate(paths)}
+            ordered: list[tuple[int, dict]] = []
+            for future in as_completed(future_map):
+                ordered.append((future_map[future], future.result()))
+        results = [item for _, item in sorted(ordered, key=lambda pair: pair[0])]
 
     summary = {
         "mode": "batch",
@@ -94,6 +110,7 @@ def _run_task_dir(args: argparse.Namespace) -> dict:
             or (item.get("evaluation") is not None and not item.get("evaluation", {}).get("passed"))
         ),
         "skipped": sum(1 for item in results if item.get("status") == "skipped"),
+        "concurrency": max_workers,
     }
     record = {
         "task_name": f"batch-{root.name}",

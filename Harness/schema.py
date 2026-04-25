@@ -26,6 +26,7 @@ class HarnessTaskSpec:
     temperature: float = 0.2
     metadata: dict[str, Any] = field(default_factory=dict)
     checks: list[TaskCheck] = field(default_factory=list)
+    tools: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -89,6 +90,25 @@ def _optional_checks(payload: dict[str, Any]) -> list[TaskCheck]:
     return checks
 
 
+def _optional_tools(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    raw_tools = payload.get("tools")
+    if raw_tools is None:
+        return []
+    if not isinstance(raw_tools, list):
+        raise TaskSchemaError("field `tools` must be an array if present")
+
+    tools: list[dict[str, Any]] = []
+    for index, item in enumerate(raw_tools):
+        if not isinstance(item, dict):
+            raise TaskSchemaError(f"tools[{index}] must be an object")
+        name = _require_str(item, "name")
+        args = item.get("args", {})
+        if not isinstance(args, dict):
+            raise TaskSchemaError(f"tools[{index}].args must be an object if present")
+        tools.append({"name": name, "args": args})
+    return tools
+
+
 def _optional_steps(payload: dict[str, Any]) -> list[WorkflowStepSpec]:
     raw_steps = payload.get("steps")
     if raw_steps is None:
@@ -126,6 +146,7 @@ def validate_task_payload(payload: dict[str, Any]) -> HarnessTaskSpec:
     system_prompt = _optional_str(payload, "system_prompt")
     metadata = _optional_dict(payload, "metadata")
     checks = _optional_checks(payload)
+    tools = _optional_tools(payload)
 
     try:
         temperature = float(payload.get("temperature", 0.2))
@@ -141,6 +162,7 @@ def validate_task_payload(payload: dict[str, Any]) -> HarnessTaskSpec:
         temperature=temperature,
         metadata=metadata,
         checks=checks,
+        tools=tools,
     )
 
 

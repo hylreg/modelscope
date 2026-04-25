@@ -34,6 +34,7 @@ def render_workflow_context(
     step_index: int,
     step_total: int,
     previous_output: str | None,
+    shared_context: dict[str, Any],
 ) -> str:
     template = default_workflow_prompt()
     return template.format(
@@ -41,6 +42,7 @@ def render_workflow_context(
         step_index=step_index,
         step_total=step_total,
         previous_output=previous_output or "[no previous output]",
+        shared_context=json.dumps(shared_context, ensure_ascii=False, indent=2),
     )
 
 
@@ -50,6 +52,7 @@ def run_workflow(config: HarnessConfig, workflow_path: str | Path) -> dict[str, 
 
     results: list[WorkflowStepResult] = []
     previous_output: str | None = None
+    shared_context: dict[str, Any] = {"workflow": workflow.name, "steps": []}
     base_dir = workflow_path.parent
 
     for index, step in enumerate(workflow.steps, start=1):
@@ -64,9 +67,24 @@ def run_workflow(config: HarnessConfig, workflow_path: str | Path) -> dict[str, 
                     step_index=index,
                     step_total=len(workflow.steps),
                     previous_output=previous_output,
+                    shared_context=shared_context,
                 )
-            result = run_task_with_context(config, task, context_notes=context_notes)
+            result = run_task_with_context(
+                config,
+                task,
+                context_notes=context_notes,
+                shared_context=shared_context,
+            )
             previous_output = result["output"]
+            shared_context["steps"].append(
+                {
+                    "index": index,
+                    "name": step_name,
+                    "task_path": str(step_path),
+                    "output": result["output"],
+                    "evaluation": result["evaluation"],
+                }
+            )
             results.append(
                 WorkflowStepResult(
                     step_index=index,
@@ -109,6 +127,7 @@ def run_workflow(config: HarnessConfig, workflow_path: str | Path) -> dict[str, 
         "mode": "workflow",
         "summary": summary,
         "steps": [result.__dict__ for result in results],
+        "shared_context": shared_context,
     }
     record["run_file"] = str(save_run_record(config.runs_dir, record))
     return {

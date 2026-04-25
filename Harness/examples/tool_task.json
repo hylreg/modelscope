@@ -1,0 +1,22 @@
+{
+  "name": "tool-demo",
+  "user_prompt": "Use the tool output as a hint, then explain how the framework should expose local tool results to the model.",
+  "temperature": 0.2,
+  "metadata": {
+    "mode": "tool-demo"
+  },
+  "tools": [
+    {
+      "name": "now_utc"
+    },
+    {
+      "name": "context_summary"
+    }
+  ],
+  "checks": [
+    {
+      "kind": "contains",
+      "value": "tool"
+    }
+  ]
+}
