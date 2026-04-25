@@ -1,0 +1,14 @@
+{
+  "name": "workflow-plan",
+  "user_prompt": "Based on the previous output, produce a 5-step execution plan with owners and deliverables.",
+  "temperature": 0.2,
+  "metadata": {
+    "stage": "plan"
+  },
+  "checks": [
+    {
+      "kind": "contains",
+      "value": "Step"
+    }
+  ]
+}

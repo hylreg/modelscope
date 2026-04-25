@@ -18,3 +18,6 @@ def default_system_prompt() -> str:
 def default_task_prompt() -> str:
     return load_template("task_prompt.md")
 
+
+def default_workflow_prompt() -> str:
+    return load_template("workflow_prompt.md")

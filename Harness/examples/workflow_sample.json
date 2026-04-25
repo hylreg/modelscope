@@ -1,0 +1,18 @@
+{
+  "name": "hermes-briefing",
+  "metadata": {
+    "project": "Hermes Engineering",
+    "mode": "workflow-template"
+  },
+  "steps": [
+    {
+      "task": "workflow_step_01.json",
+      "label": "triage"
+    },
+    {
+      "task": "workflow_step_02.json",
+      "label": "plan",
+      "include_previous_output": true
+    }
+  ]
+}

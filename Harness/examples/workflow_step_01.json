@@ -1,0 +1,14 @@
+{
+  "name": "workflow-triage",
+  "user_prompt": "Identify the top 3 project risks and output them as a concise bullet list.",
+  "temperature": 0.2,
+  "metadata": {
+    "stage": "triage"
+  },
+  "checks": [
+    {
+      "kind": "contains",
+      "value": "risk"
+    }
+  ]
+}

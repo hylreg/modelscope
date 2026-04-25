@@ -28,6 +28,20 @@ class HarnessTaskSpec:
     checks: list[TaskCheck] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class WorkflowStepSpec:
+    task: str
+    label: str | None = None
+    include_previous_output: bool = True
+
+
+@dataclass(frozen=True)
+class HarnessWorkflowSpec:
+    name: str
+    steps: list[WorkflowStepSpec]
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
 def _require_str(payload: dict[str, Any], key: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -75,6 +89,34 @@ def _optional_checks(payload: dict[str, Any]) -> list[TaskCheck]:
     return checks
 
 
+def _optional_steps(payload: dict[str, Any]) -> list[WorkflowStepSpec]:
+    raw_steps = payload.get("steps")
+    if raw_steps is None:
+        return []
+    if not isinstance(raw_steps, list):
+        raise TaskSchemaError("field `steps` must be an array if present")
+
+    steps: list[WorkflowStepSpec] = []
+    for index, item in enumerate(raw_steps):
+        if not isinstance(item, dict):
+            raise TaskSchemaError(f"steps[{index}] must be an object")
+        task = _require_str(item, "task")
+        label = _optional_str(item, "label")
+        include_previous_output = item.get("include_previous_output", True)
+        if not isinstance(include_previous_output, bool):
+            raise TaskSchemaError(
+                f"steps[{index}].include_previous_output must be a boolean if present"
+            )
+        steps.append(
+            WorkflowStepSpec(
+                task=task,
+                label=label,
+                include_previous_output=include_previous_output,
+            )
+        )
+    return steps
+
+
 def validate_task_payload(payload: dict[str, Any]) -> HarnessTaskSpec:
     if not isinstance(payload, dict):
         raise TaskSchemaError("task payload must be a JSON object")
@@ -85,7 +127,10 @@ def validate_task_payload(payload: dict[str, Any]) -> HarnessTaskSpec:
     metadata = _optional_dict(payload, "metadata")
     checks = _optional_checks(payload)
 
-    temperature = float(payload.get("temperature", 0.2))
+    try:
+        temperature = float(payload.get("temperature", 0.2))
+    except (TypeError, ValueError) as e:
+        raise TaskSchemaError("field `temperature` must be a number") from e
     if temperature < 0 or temperature > 2:
         raise TaskSchemaError("field `temperature` must be between 0 and 2")
 
@@ -98,3 +143,15 @@ def validate_task_payload(payload: dict[str, Any]) -> HarnessTaskSpec:
         checks=checks,
     )
 
+
+def validate_workflow_payload(payload: dict[str, Any]) -> HarnessWorkflowSpec:
+    if not isinstance(payload, dict):
+        raise TaskSchemaError("workflow payload must be a JSON object")
+
+    name = _require_str(payload, "name") if payload.get("name") is not None else "unnamed-workflow"
+    metadata = _optional_dict(payload, "metadata")
+    steps = _optional_steps(payload)
+    if not steps:
+        raise TaskSchemaError("workflow must contain at least one step")
+
+    return HarnessWorkflowSpec(name=name, steps=steps, metadata=metadata)
