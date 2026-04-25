@@ -1,0 +1,9 @@
+{
+  "name": "sample-analysis",
+  "user_prompt": "Summarize the key risks in this project and give a concrete next-step checklist.",
+  "temperature": 0.2,
+  "metadata": {
+    "project": "Hermes Engineering",
+    "mode": "template"
+  }
+}
