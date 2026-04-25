@@ -1,16 +1,30 @@
 {
   "name": "tool-demo",
-  "user_prompt": "Use the tool output as a hint, then explain how the framework should expose local tool results to the model.",
+  "user_prompt": "Use the available tools if helpful, then explain how the framework should expose tool calls and tool results to the model.",
   "temperature": 0.2,
   "metadata": {
     "mode": "tool-demo"
   },
   "tools": [
     {
-      "name": "now_utc"
+      "name": "now_utc",
+      "description": "Return the current UTC timestamp.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "strict": true
     },
     {
-      "name": "context_summary"
+      "name": "context_summary",
+      "description": "Summarize the shared workflow context as JSON.",
+      "parameters": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false
+      },
+      "strict": true
     }
   ],
   "checks": [

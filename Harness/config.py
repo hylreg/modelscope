@@ -13,6 +13,7 @@ class HarnessConfig:
     max_workers: int
     max_retries: int
     retry_backoff_seconds: float
+    max_tool_rounds: int
 
 
 def _parse_int(name: str, default: int, minimum: int | None = None) -> int:
@@ -52,4 +53,5 @@ def load_config() -> HarnessConfig:
         max_workers=_parse_int("HARNESS_MAX_WORKERS", 4, minimum=1),
         max_retries=_parse_int("HARNESS_MAX_RETRIES", 2, minimum=0),
         retry_backoff_seconds=_parse_float("HARNESS_RETRY_BACKOFF_SECONDS", 1.5, minimum=0.0),
+        max_tool_rounds=_parse_int("HARNESS_MAX_TOOL_ROUNDS", 8, minimum=1),
     )

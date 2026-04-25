@@ -3,15 +3,26 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
+import json
 
 
 ToolFn = Callable[[dict[str, Any], dict[str, Any]], str]
 
 
 @dataclass(frozen=True)
-class ToolSpec:
+class ToolDefinition:
     name: str
-    args: dict[str, Any]
+    description: str | None = None
+    parameters: dict[str, Any] | None = None
+    strict: bool = True
+
+
+@dataclass(frozen=True)
+class ToolInvocation:
+    name: str
+    arguments: dict[str, Any]
+    call_id: str
+    model_call_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -33,15 +44,37 @@ def list_tools() -> list[str]:
     return sorted(_TOOL_REGISTRY)
 
 
-def execute_tool(spec: ToolSpec, context: dict[str, Any] | None = None) -> ToolResult:
+def execute_tool(invocation: ToolInvocation, context: dict[str, Any] | None = None) -> ToolResult:
     context = context or {}
-    fn = _TOOL_REGISTRY.get(spec.name)
+    fn = _TOOL_REGISTRY.get(invocation.name)
     if fn is None:
-        return ToolResult(name=spec.name, output="", ok=False, error=f"unknown tool: {spec.name}")
+        return ToolResult(name=invocation.name, output="", ok=False, error=f"unknown tool: {invocation.name}")
     try:
-        return ToolResult(name=spec.name, output=fn(spec.args, context), ok=True)
+        return ToolResult(name=invocation.name, output=fn(invocation.arguments, context), ok=True)
     except Exception as e:
-        return ToolResult(name=spec.name, output="", ok=False, error=str(e))
+        return ToolResult(name=invocation.name, output="", ok=False, error=str(e))
+
+
+def build_function_tool(definition: ToolDefinition) -> dict[str, Any]:
+    return {
+        "type": "function",
+        "name": definition.name,
+        "description": definition.description,
+        "parameters": definition.parameters or {"type": "object", "properties": {}, "additionalProperties": False},
+        "strict": definition.strict,
+    }
+
+
+def parse_tool_arguments(raw: str, tool_name: str) -> dict[str, Any]:
+    if not raw.strip():
+        return {}
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"tool `{tool_name}` arguments are not valid JSON: {e}") from e
+    if not isinstance(value, dict):
+        raise ValueError(f"tool `{tool_name}` arguments must be a JSON object")
+    return value
 
 
 def _tool_echo(args: dict[str, Any], _context: dict[str, Any]) -> str:
@@ -53,15 +86,11 @@ def _tool_now_utc(_args: dict[str, Any], _context: dict[str, Any]) -> str:
 
 
 def _tool_json_pretty(args: dict[str, Any], _context: dict[str, Any]) -> str:
-    import json
-
     value = args.get("value")
     return json.dumps(value, ensure_ascii=False, indent=2)
 
 
 def _tool_context_summary(_args: dict[str, Any], context: dict[str, Any]) -> str:
-    import json
-
     return json.dumps(context, ensure_ascii=False, indent=2)
 
 

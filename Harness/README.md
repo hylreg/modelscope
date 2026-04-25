@@ -14,6 +14,7 @@
 - 本地工具调用接口
 - 工作流共享上下文
 - 批处理并发
+- 原生 function calling
 
 设计目标是先把工程骨架搭起来，再按你的业务流程逐步扩展。
 
@@ -91,6 +92,14 @@ PY
 - `HARNESS_MAX_WORKERS`，默认 `4`
 - `HARNESS_MAX_RETRIES`，默认 `2`
 - `HARNESS_RETRY_BACKOFF_SECONDS`，默认 `1.5`
+- `HARNESS_MAX_TOOL_ROUNDS`，默认 `8`
+
+`tools` 字段现在表示给模型看的 function definitions，字段结构大致是：
+
+- `name`
+- `description`，可选
+- `parameters`，JSON Schema，可选
+- `strict`，可选，默认 `true`
 
 ## 你可以扩展的点
 

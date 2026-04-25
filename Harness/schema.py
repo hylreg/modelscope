@@ -102,10 +102,21 @@ def _optional_tools(payload: dict[str, Any]) -> list[dict[str, Any]]:
         if not isinstance(item, dict):
             raise TaskSchemaError(f"tools[{index}] must be an object")
         name = _require_str(item, "name")
-        args = item.get("args", {})
-        if not isinstance(args, dict):
-            raise TaskSchemaError(f"tools[{index}].args must be an object if present")
-        tools.append({"name": name, "args": args})
+        description = _optional_str(item, "description")
+        parameters = item.get("parameters", {})
+        if parameters is not None and not isinstance(parameters, dict):
+            raise TaskSchemaError(f"tools[{index}].parameters must be an object if present")
+        strict = item.get("strict", True)
+        if not isinstance(strict, bool):
+            raise TaskSchemaError(f"tools[{index}].strict must be a boolean if present")
+        tools.append(
+            {
+                "name": name,
+                "description": description,
+                "parameters": parameters,
+                "strict": strict,
+            }
+        )
     return tools
 
 
