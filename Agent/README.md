@@ -50,6 +50,7 @@ uv run python Agent/min_agent.py "帮我写一段面试自我介绍" --dry-run
 
 ## 说明
 
+- 运行时会先打印本次路由是由 `规则` 还是 `LLM` 选出的 skill
 - 如果没有配置 `OPENAI_API_KEY`，LLM 兜底会跳过
 - 如果最终执行阶段没有可用模型，会输出 `模型不可用`
 - `SKILL.md` 里只要有 frontmatter 的 `name` 和 `description`，再加上正文里用引号写的短语，就能参与路由

@@ -167,9 +167,14 @@ def main() -> None:
         print("未匹配到 skill")
         return
 
+    route_source = "rule"
     if top_score < ROUTER_SCORE_THRESHOLD or top_score - second_score <= ROUTER_MARGIN_THRESHOLD:
-        selected_skill = pick_skill_with_llm(skills, args.query, args.model) or selected_skill
+        llm_skill = pick_skill_with_llm(skills, args.query, args.model)
+        if llm_skill is not None:
+            selected_skill = llm_skill
+            route_source = "llm"
 
+    print(f"[route] 本次使用{('LLM' if route_source == 'llm' else '规则')}选择 skill")
     print(f"[router] {selected_skill.name} score={top_score}")
     if not args.dry_run:
         print(run_skill(selected_skill, args.query, args.model))
