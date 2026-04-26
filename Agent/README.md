@@ -12,7 +12,7 @@
 
 ## 路由规则
 
-`min_agent.py` 里的规则路由会综合下面几项：
+`skill_agent.py` 里的规则路由会综合下面几项：
 
 - skill 的引号触发词命中，单项加权最高
 - skill 名称是否直接出现在 query 里
@@ -27,13 +27,13 @@
 ## 运行
 
 ```bash
-uv run python Agent/min_agent.py "帮我根据JD润色简历"
+uv run python Agent/skill_agent.py "帮我根据JD润色简历"
 ```
 
 只看路由结果，不执行 skill：
 
 ```bash
-uv run python Agent/min_agent.py "帮我写一段面试自我介绍" --dry-run
+uv run python Agent/skill_agent.py "帮我写一段面试自我介绍" --dry-run
 ```
 
 ## 环境变量
