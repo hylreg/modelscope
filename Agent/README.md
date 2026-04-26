@@ -54,3 +54,23 @@ uv run python Agent/min_agent.py "帮我写一段面试自我介绍" --dry-run
 - 如果没有配置 `OPENAI_API_KEY`，LLM 兜底会跳过
 - 如果最终执行阶段没有可用模型，会输出 `模型不可用`
 - `SKILL.md` 里只要有 frontmatter 的 `name` 和 `description`，再加上正文里用引号写的短语，就能参与路由
+
+# Minimal MCP Agent
+
+一个更小的 agent，用来直接连接本仓库里的最小 MCP Server，并调用其中暴露的工具。
+
+## 运行
+
+列出远端工具：
+
+```bash
+uv run python Agent/mcp_agent.py --list-tools
+```
+
+调用默认的 `echo` 工具：
+
+```bash
+uv run python Agent/mcp_agent.py --tool echo --arguments '{"text":"hello"}'
+```
+
+调用其他工具时，只要把 `--tool` 和 `--arguments` 换成对应的名字和 JSON 参数即可。

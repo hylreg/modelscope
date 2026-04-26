@@ -6,5 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "dspy-ai>=3.2.0",
+    "mcp",
     "openai",
 ]
