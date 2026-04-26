@@ -60,6 +60,15 @@ uv run python Agent/skill_agent.py "帮我写一段面试自我介绍" --dry-run
 一个更小的 agent，用来直接连接本仓库里的最小 MCP Server，并调用其中暴露的工具。
 
 这个版本的代码尽量写成“能顺着读下去”的样子，重点是理解 `stdio_client` 和 `ClientSession` 怎么配合。
+现在它可以先把工具列表交给 LLM，再让 LLM 自动选 tool 和参数。
+
+它的流程很简单：
+
+1. 启动本地 MCP server
+2. 连接 server 并拿到工具列表
+3. 把工具列表和你的自然语言请求发给 LLM
+4. LLM 返回要用的 tool 名和参数
+5. 再把这个 tool 调给 MCP server
 
 ## 运行
 
@@ -69,10 +78,8 @@ uv run python Agent/skill_agent.py "帮我写一段面试自我介绍" --dry-run
 uv run python Agent/mcp_agent.py --list-tools
 ```
 
-调用默认的 `echo` 工具：
+让 LLM 自动选择工具：
 
 ```bash
-uv run python Agent/mcp_agent.py --tool echo --arguments '{"text":"hello"}'
+uv run python Agent/mcp_agent.py "把字符串 hello 原样返回"
 ```
-
-调用其他工具时，只要把 `--tool` 和 `--arguments` 换成对应的名字和 JSON 参数即可。
