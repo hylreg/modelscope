@@ -59,6 +59,8 @@ uv run python Agent/skill_agent.py "帮我写一段面试自我介绍" --dry-run
 
 一个更小的 agent，用来直接连接本仓库里的最小 MCP Server，并调用其中暴露的工具。
 
+这个版本的代码尽量写成“能顺着读下去”的样子，重点是理解 `stdio_client` 和 `ClientSession` 怎么配合。
+
 ## 运行
 
 列出远端工具：

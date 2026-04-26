@@ -1,32 +1,28 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+"""A tiny MCP client that talks to the local demo server over stdio."""
+
 import argparse
 import asyncio
 import json
-import os
 from pathlib import Path
 from typing import Any
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-
-
-DEFAULT_SERVER_ARGS = [
-    "run",
-    "python",
-    "-m",
-    "minimal_mcp_python.server",
-]
-DEFAULT_SERVER_CWD = Path(__file__).resolve().parents[1] / "MCP/minimal-mcp-python"
+# 这个脚本默认只连仓库里的最小 MCP Server。
+SERVER_CWD = Path(__file__).resolve().parents[1] / "MCP/minimal-mcp-python"
+SERVER_COMMAND = "uv"
+SERVER_ARGS = ["run", "python", "-m", "minimal_mcp_python.server"]
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Connect to the local MCP server and call one tool.")
     parser.add_argument(
         "--tool",
         default="echo",
-        help="要调用的 MCP 工具名，默认 echo",
+        help="要调用的工具名，默认 echo",
     )
     parser.add_argument(
         "--arguments",
@@ -36,90 +32,79 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--list-tools",
         action="store_true",
-        help="只列出远端 MCP server 暴露的工具",
-    )
-    parser.add_argument(
-        "--server-command",
-        default="uv",
-        help="启动 MCP server 的命令，默认 uv",
-    )
-    parser.add_argument(
-        "--server-cwd",
-        default=str(DEFAULT_SERVER_CWD),
-        help="启动 MCP server 时的工作目录，默认指向本仓库的 minimal server",
-    )
-    parser.add_argument(
-        "--server-args",
-        nargs=argparse.REMAINDER,
-        default=DEFAULT_SERVER_ARGS,
-        help="启动 MCP server 的参数；默认指向本仓库的 minimal server",
+        help="只列出工具名，不调用工具",
     )
     return parser
 
 
-def _parse_arguments(raw: str) -> dict[str, Any]:
+def parse_arguments(raw: str) -> dict[str, Any]:
+    """把命令行里的 JSON 字符串转成 MCP 需要的 dict。"""
     if not raw.strip():
         return {}
 
-    value = json.loads(raw)
-    if not isinstance(value, dict):
-        raise ValueError("`--arguments` 必须是 JSON object")
-    return value
+    data = json.loads(raw)
+    if not isinstance(data, dict):
+        raise ValueError("--arguments 必须是 JSON object")
+    return data
 
 
-def _format_content_block(block: Any) -> str:
-    block_type = getattr(block, "type", None)
-    if block_type == "text":
-        return getattr(block, "text", "")
-    if hasattr(block, "model_dump"):
-        return json.dumps(block.model_dump(), ensure_ascii=False)
-    if isinstance(block, dict):
-        return json.dumps(block, ensure_ascii=False)
-    return str(block)
-
-
-def _format_tool_result(result: Any) -> str:
+def format_result(result: Any) -> str:
+    """把 MCP 的返回值整理成可直接打印的文本。"""
     structured = getattr(result, "structuredContent", None)
     if structured is not None:
         return json.dumps(structured, ensure_ascii=False)
 
     content = getattr(result, "content", None)
-    if content:
-        return "\n".join(_format_content_block(block) for block in content)
+    if not content:
+        return str(result)
 
-    return str(result)
-
-
-def _server_env() -> dict[str, str]:
-    # `uv` 会复用环境变量启动子进程；去掉当前虚拟环境标记，避免子项目提示环境不匹配。
-    return {key: value for key, value in os.environ.items() if key != "VIRTUAL_ENV"}
+    parts: list[str] = []
+    for block in content:
+        # MCP 的 content 通常是一个个 block，这里尽量把它们变成人类可读文本。
+        block_type = getattr(block, "type", None)
+        if block_type == "text":
+            parts.append(getattr(block, "text", ""))
+        elif hasattr(block, "model_dump"):
+            parts.append(json.dumps(block.model_dump(), ensure_ascii=False))
+        elif isinstance(block, dict):
+            parts.append(json.dumps(block, ensure_ascii=False))
+        else:
+            parts.append(str(block))
+    return "\n".join(parts)
 
 
 async def run(args: argparse.Namespace) -> int:
-    arguments = _parse_arguments(args.arguments)
+    """启动本地 server，连接进去，然后列工具或调用工具。"""
+    tool_arguments = parse_arguments(args.arguments)
+
+    # 1. 先告诉 MCP client：要启动哪个命令、在哪个目录启动。
     server_params = StdioServerParameters(
-        command=args.server_command,
-        args=args.server_args,
-        env=_server_env(),
-        cwd=args.server_cwd,
+        command=SERVER_COMMAND,
+        args=SERVER_ARGS,
+        cwd=SERVER_CWD,
     )
 
+    # 2. stdio_client 会启动子进程，并把它的 stdin/stdout 包成流。
     async with stdio_client(server_params) as (read_stream, write_stream):
+        # 3. ClientSession 负责按 MCP 协议和 server 对话。
         async with ClientSession(read_stream, write_stream) as session:
             await session.initialize()
 
+            # 先取工具列表。这样即使后面不调用，也能看到 server 暴露了什么。
             tools = await session.list_tools()
             if args.list_tools:
                 for tool in tools.tools:
                     print(tool.name)
                 return 0
 
-            result = await session.call_tool(args.tool, arguments=arguments)
-            print(_format_tool_result(result))
+            # 不列工具的话，就直接调用指定工具。
+            result = await session.call_tool(args.tool, arguments=tool_arguments)
+            print(format_result(result))
             return 0
 
 
 def main() -> None:
+    """命令行入口。"""
     args = build_parser().parse_args()
     try:
         raise SystemExit(asyncio.run(run(args)))
